@@ -1,0 +1,56 @@
+name: CI
+on:
+  push:
+  pull_request:
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        working-directory: apps/api
+        run: uv sync --frozen --extra dev
+      - name: Lint
+        working-directory: apps/api
+        run: uv run ruff check app tests migrations
+      - name: Format check
+        working-directory: apps/api
+        run: uv run ruff format --check app tests migrations
+      - name: Tests
+        working-directory: apps/api
+        run: uv run pytest -q
+      - name: Migration check
+        working-directory: apps/api
+        run: uv run alembic upgrade head
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - name: Install dependencies
+        working-directory: apps/web
+        run: npm ci
+      - name: Typecheck
+        working-directory: apps/web
+        run: npm run typecheck
+      - name: Lint
+        working-directory: apps/web
+        run: npm run lint
+      - name: Tests
+        working-directory: apps/web
+        run: npm run test
+      - name: Format check
+        working-directory: apps/web
+        run: npm run format:check
+      - name: Build
+        working-directory: apps/web
+        run: npm run build
